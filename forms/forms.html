@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEODIS Online Application Form</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="/favicon.png" type="image/png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+    <script src="https://js.paystack.co/v1/inline.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            padding: 0;
+            margin: 0;
+            scroll-behavior: smooth;
+        }
+        h1, h2, h3 {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600; /* Medium-bold */
+}
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background-color: white;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            /* Initially hide the form container */
+            display: none;
+        }
+        .header {
+            background: url(/forms/images/Octobre\ rose\ GEODIS.webp);
+            filter: brightness(70%);
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: top;
+            color: white;
+            text-align: center;
+            height: 50vh; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center;
+            padding: 20px;
+            height: 100vh;
+        }
+        .progress-container {
+            position: relative;
+            margin: 2rem auto;
+            width: 90%;
+            display: flex;
+            justify-content: space-between;
+        }
+        .progress-line {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            height: 4px;
+            background-color: #e5e7eb;
+            width: 100%;
+            transform: translateY(-50%);
+            z-index: 0;
+        }
+        .progress {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            height: 4px;
+            background-color: #4f46e5;
+            transition: width 0.3s ease-in-out;
+            transform: translateY(-50%);
+            z-index: 1;
+        }
+        .step {
+            width: 3rem;
+            height: 3rem;
+            background-color: #e5e7eb;
+            color: #4b5563;
+            border-radius: 9999px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease-in-out;
+            position: relative;
+            z-index: 2;
+        }
+        .step.active {
+            background-color: #0d00ff;
+            color: white;
+            box-shadow: 0 0 0 4px rgba(61, 51, 255, 0.5);
+        }
+        .step.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1rem;
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 10px solid #4f46e5;
+        }
+        .panel {
+            display: none;
+            padding: 2rem 1.5rem;
+        }
+        .panel.active {
+            display: block;
+        }
+        .panel h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+        }
+        .row {
+            display: flex;
+            gap: 1rem;
+        }
+        .col {
+            flex: 1;
+        }
+        .floating {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+        .floating input, .floating textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid #d1d5db;
+            background-color: #f9fafb;
+            font-size: 1rem;
+            transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            outline: none;
+        }
+        .floating input:focus, .floating textarea:focus {
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+        }
+        .floating label {
+            position: absolute;
+            top: 0.75rem;
+            left: 0.75rem;
+            color: #6b7280;
+            pointer-events: none;
+            transition: all 0.2s ease-in-out;
+            background-color: white;
+            padding: 0 0.25rem;
+        }
+        .floating input:focus + label, .floating input:not(:placeholder-shown) + label,
+        .floating textarea:focus + label, .floating textarea:not(:placeholder-shown) + label {
+            top: -0.5rem;
+            font-size: 0.75rem;
+            color: #4f46e5;
+        }
+        .btn-group {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            padding: 1.5rem;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .summary-box {
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+        }
+        .summary-box h4 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 0.5rem;
+            margin-top: 1rem;
+        }
+        .summary-box p {
+            margin-bottom: 0.75rem;
+            color: #4b5563;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            transform: scale(0.95);
+            transition: transform 0.2s ease-in-out;
+        }
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+        .modal-content p {
+            font-size: 1rem;
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+        }
+        .button-nav {
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            transform: translateY(0);
+        }
+        .button-nav:hover {
+            box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+        .button-nav:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            z-index: -1;
+        }
+        .button-nav:hover:before {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        #prevBtn {
+            background-color: #fff;
+            color: #4b5563;
+            border: 1px solid #e5e7eb;
+        }
+        #prevBtn:hover {
+            color: #1f2937;
+        }
+        #nextBtn, #confirmPayBtn {
+            color: white;
+            background-image: linear-gradient(to right, #0600b8, #0004ff);
+            border: none;
+        }
+        #nextBtn:hover, #confirmPayBtn:hover {
+            background-image: linear-gradient(to right, #1500ff, #3000aa);
+        }
+
+        /* Styles for the loading feature */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex; /* Initially show the loading overlay */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #e5e7eb;
+            border-top: 5px solid #4f46e5;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        nav{
+            margin-top: 0px;
+            padding: 10px;
+            background-color: #0d02da;
+            position: fixed;
+            width: 100%;
+            height: 35px;
+            z-index: 110;
+            top: 0px;
+            box-shadow: 0px 0px 1px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-decoration: none;
+            text-transform: uppercase;
+        }
+        .nav-links a{
+            margin: 10px;
+            font-size: 11px;
+            font-weight: 900;
+            color: white;
+        }
+        .nav-links{
+            display: flex;
+            flex-direction: row;
+        }
+        .contain{
+            width: 100%;
+        }
+        .sideBar{
+            position: fixed;
+            top: 0;
+            right: -800px;
+            z-index: 20000;
+            background-color: rgba(255, 255, 255, 0.959);
+            backdrop-filter: blur(10px);
+            width: 250px;
+            height: 100%;
+            padding-top: 10px;
+            padding-right: 20px;
+            transition: all 0.5s ease-in-out;
+        }
+        .sideBar.show{
+            display: flex;
+            flex-direction: column;
+            right: 0px;
+        }
+        .sideBar-links{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 50px;
+        }
+        .sideBar-links a{
+            font-size: 20px;
+            color: rgb(63, 63, 63);
+            margin: 10px;
+        }
+        .sideBar-links a:hover{
+            color: #1a1a1a;
+        }
+        .menu{
+            cursor: pointer;
+            display: none;
+        }
+        @media (max-width: 1022px) {
+            .hideOnMobile{
+                display: none;
+            }
+            .text{
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+            }
+            .menu{
+                display: flex;
+                margin-right: 10px;
+            }
+        }
+        @media (max-width: 600px) {
+            .sideBar{
+                width: 100%;
+            }
+            .text{
+            display: flex;
+            flex-direction: column;
+            justify-items: center;
+            align-content: center;
+            }
+            .learnmore{
+                display: flex;
+                justify-content: center;
+                width: 100%;
+            }
+            .footer-links{
+                flex-direction: column;
+            }
+            footer .down{
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        }
+        .learnmore{
+            display: flex;
+            align-items: center;
+            padding: 10px 20px;
+            background-color: #0d02da;
+            color: white;
+        }
+        footer{
+            width: 100%;
+            height: auto;
+            background: #333333;
+        }
+        footer .down{
+            padding: 50px;
+            display: flex;
+            color: white;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+        }
+        .footer-links{
+            padding: 50px;
+            display: flex;
+            justify-content: space-between;
+            gap: 50px;
+        }
+        footer .links{
+            display: flex;
+            flex-direction: column;
+            color: white;
+            font-size: 13px;
+            gap: 10px;
+        }
+        footer h4{
+            font-size: 10px;
+            font-weight: 900;
+        }
+        .text{
+            display: flex;
+            flex-direction: column;
+            justify-items: center;
+            align-content: center;
+            position: absolute;
+            z-index: 100;
+            color: white;
+            width: 100%;
+            padding: 200px 50px 0px 50px;
+        }
+    </style>
+</head>
+<body>
+<nav>
+     <div class="logo">
+    </div>
+    <div class="nav-links">
+         <a class="hideOnMobile" href="https://geodis.com/about-us">Company</a>
+         <a class="hideOnMobile" href="https://geodis.com/newsroom">Newsroom</a>
+         <a class="hideOnMobile" href="https://geodis.com/career">Careers</a>
+         <a class="hideOnMobile" href="https://geodis.com/choose-country-territory?destination=/career">Global-EN</a>
+         <a class="hideOnMobile" href="https://geodis.com/agency-locator">Locations</a>
+         <a class="hideOnMobile" href="https://my.geodis.com/">Log in / Sign up</a>
+         <li id="menu" class="menu">
+            <img src="/forms/images/bars.webp" style="width: 15px; color: white;" alt="">
+         </li>
+    </div>
+</nav>
+<div id="sideBar" class="sideBar">
+    <li id="close" style="list-style: none; cursor: pointer;" class="close">
+        <img src="/forms/images/x.svg" style="width: 15px; float: right;" alt="">
+    </li>
+    <div class="sideBar-links">
+         <a href="https://geodis.com/about-us">Company</a>
+         <a href="https://geodis.com/newsroom">Newsroom</a>
+         <a href="https://geodis.com/career">Careers</a>
+         <a href="https://geodis.com/choose-country-territory?destination=/career">Global-EN</a>
+         <a href="https://geodis.com/agency-locator">Locations</a>
+         <a href="https://my.geodis.com/">Log in / Sign up</a>
+    </div>
+</div>
+
+<div class="contain" id="formContainer">
+        <div class="logo">
+            <img src="/forms/images/Geodis-Logo_NEW_138x51px_WHITE_1.png" style="width: 120px; position: absolute; top: 50px; left: 30px; z-index: 100;" alt="geodis logo">
+        </div>
+    <div class="text">
+        <h1 class="text-4xl font-bold">Online Job Application Form</h1>
+        <p class="mt-2 text-lg">Your next career starts here. Apply in a few simple steps.</p>
+    </div>
+    <div class="header">
+    </div>
+
+    <div class="progress-container">
+        <div class="progress-line"></div>
+        <div class="progress" id="progress"></div>
+        <div class="step" data-step="0">1</div>
+        <div class="step" data-step="1">2</div>
+        <div class="step" data-step="2">3</div>
+        <div class="step" data-step="3">4</div>
+        <div class="step" data-step="4">5</div>
+    </div>
+
+    <form id="appForm">
+        <!-- Panel 1: Personal Info -->
+        <div class="panel active" id="panel-0">
+            <h2>Personal Information</h2>
+            <div class="floating">
+                <input name="fullName" type="text" placeholder=" " required>
+                <label>Full name</label>
+            </div>
+            <div class="row">
+                <div class="col floating">
+                    <input name="email" type="email" placeholder=" " required>
+                    <label>Email address</label>
+                </div>
+                <div class="col floating">
+                    <input name="phone" type="tel" placeholder=" ">
+                    <label>Phone number</label>
+                </div>
+            </div>
+            <div class="floating">
+                <input name="positionApplied" type="text" placeholder=" " required>
+                <label>Position applied for</label>
+            </div>
+        </div>
+
+        <!-- Panel 2: Education -->
+        <div class="panel" id="panel-1">
+            <h2>Education</h2>
+            <div id="educations">
+                <div class="edu-block">
+                    <div class="row">
+                        <div class="col floating">
+                            <input name="schoolName[]" type="text" placeholder=" ">
+                            <label>School name</label>
+                        </div>
+                        <div class="col floating">
+                            <input name="schoolLocation[]" type="text" placeholder=" ">
+                            <label>Location</label>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col floating">
+                            <input name="schoolDates[]" type="text" placeholder=" ">
+                            <label>Dates attended</label>
+                        </div>
+                        <div class="col floating">
+                            <input name="schoolDegree[]" type="text" placeholder=" ">
+                            <label>Degree / Certificate</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="mt-4 text-sm font-semibold text-indigo-600 hover:text-indigo-800" id="addEducationBtn">
+                + Add another education entry
+            </button>
+        </div>
+
+        <!-- Panel 3: Employment -->
+        <div class="panel" id="panel-2">
+            <h2>Employment History</h2>
+            <div id="employments">
+                <div class="emp-block">
+                    <div class="row">
+                        <div class="col floating">
+                            <input name="employerName[]" type="text" placeholder=" ">
+                            <label>Employer name</label>
+                        </div>
+                        <div class="col floating">
+                            <input name="employerLocation[]" type="text" placeholder=" ">
+                            <label>Location</label>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col floating">
+                            <input name="employerTitle[]" type="text" placeholder=" ">
+                            <label>Job title</label>
+                        </div>
+                        <div class="col floating">
+                            <input name="employerDates[]" type="text" placeholder=" ">
+                            <label>Dates employed</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="mt-4 text-sm font-semibold text-indigo-600 hover:text-indigo-800" id="addEmploymentBtn">
+                + Add another employment entry
+            </button>
+        </div>
+
+        <!-- Panel 4: Skills & References -->
+        <div class="panel" id="panel-3">
+            <h2>Skills & References</h2>
+            <div class="floating">
+                <textarea name="skills_summary" placeholder=" " class="h-24"></textarea>
+                <label>A short summary of your skills and qualifications</label>
+            </div>
+
+            <div id="skillsList">
+                <div class="floating">
+                    <input name="skills[]" type="text" placeholder=" ">
+                    <label>Skill / qualification</label>
+                </div>
+            </div>
+            <button type="button" class="mt-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800" id="addSkillBtn">
+                + Add another skill
+            </button>
+
+            <h3 class="mt-8 mb-4 text-lg font-bold text-gray-800">References</h3>
+            <div id="references">
+                <div class="row reference-block">
+                    <div class="col floating">
+                        <input name="refName[]" type="text" placeholder=" ">
+                        <label>Reference name</label>
+                    </div>
+                    <div class="col floating">
+                        <input name="refEmail[]" type="email" placeholder=" ">
+                        <label>Reference email</label>
+                    </div>
+                </div>
+            </div>
+            <button type="button" class="mt-2 text-sm font-semibold text-indigo-600 hover:text-indigo-800" id="addReferenceBtn">
+                + Add another reference
+            </button>
+        </div>
+
+        <!-- Panel 5: Summary -->
+        <div class="panel" id="panel-4">
+            <h2>Review & Payment</h2>
+            <div id="summaryBox" class="summary-box"></div>
+            <div class="mt-8 text-sm text-gray-500">
+                <p>A fee of GHS <span id="applicationFee"></span> is required to process your application.</p>
+                <p>Click "Confirm & Pay" to proceed to payment.</p>
+            </div>
+        </div>
+    </form>
+
+    <div class="btn-group">
+        <button type="button" id="prevBtn" class="button-nav" style="display: none;">Previous</button>
+        <button type="button" id="nextBtn" class="button-nav">Next</button>
+        <button type="button" id="confirmPayBtn" class="button-nav" style="display: none;">Confirm & Pay</button>
+    </div>
+</div>
+
+<div id="modalOverlay" class="modal-overlay">
+    <div id="modalContent" class="modal-content">
+        <p id="modalMessage"></p>
+        <button id="modalClose" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 transition">OK</button>
+    </div>
+</div>
+
+<!-- Loading Overlay HTML -->
+<div id="loadingOverlay" class="loading-overlay">
+    <div class="loading-spinner"></div>
+</div>
+
+<div class="learnmore">
+    <a href="https://geodis.com/standard-trading-conditions-and-certifications">Learn More</a>
+</div>
+<footer>
+    <div class="footer-links">
+        <div class="logo">
+            <img src="/forms/images/Geodis-Logo_NEW_138x51px_WHITE_1.png" style="width: 120px;" alt="geodis logo">
+        </div>
+        <div class="links">
+            <h4>DISCOVER GEODIS</h4>
+            <a href="https://geodis.com/about-us">About</a>
+            <a href="https://geodis.com/history">History</a>
+            <a href="https://geodis.com/about-us">About</a>
+            <a href="https://geodis.com/governance">Governance</a>
+            <a href="https://geodis.com/purpose-core-values">Purpose & Core Values</a>
+            <a href="https://geodis.com/lines-business">Lines of Business</a>
+            <a href="https://geodis.com/social-responsibility">Social Responsibility</a>
+            <a href="https://geodis.com/newsroom">Newsroom</a>
+            <a href="https://geodis.com/career">Careers</a>
+        </div>
+        <div class="links">
+            <h4>SOLUTIONS</h4>
+            <a href="https://geodis.com/transport-services">Transport Services</a>
+            <a href="https://geodis.com/freight-solutions">Freight Solutions</a>
+            <a href="https://geodis.com/warehousing-and-value-added-logistics">Warehousing & Value <br>Added Logistics</a>
+            <a href="https://geodis.com/verticals">Industry Solutions</a>
+        </div>
+        <div class="links">
+            <h4>TOOLS</h4>
+            <a href="https://geodis.com/contact-us#get-a-quote">Get a quote</a>
+            <a href="https://geodis.com/contact-us#contact-an-expert">Contact an Expert</a>
+            <a href="https://geodis.com/contact-us#customer-support">Customer Support</a>
+            <a href="https://geodis.com/your-workspace">Track your parcel</a>
+            <a href="https://geodis.com/logistics-carbon-calculator">Emissions Calculator</a>
+            <a href="https://geodis.com/accessibility">Accessibility</a>
+            <a href="https://geodis.com/blog-resources/customer-advisory">Customer Advisory</a>
+            <a href="https://geodis.com/standard-trading-conditions">Standard Trading Conditions <br>and Certifications</a>
+            <a href="https://geodis.com/faq">FAQ</a>
+            <a href="https://geodis.com/sitemap">Sitemap</a>
+        </div>
+        <div class="links">
+            <h4>FOLLOW US</h4>
+            <div style="display: flex; gap: 20px;" class="social">
+                <img src="/forms/images/instagram.svg" alt="instagram">
+                <img src="/forms/images/twitter-X-logo_white.png" alt="x">
+                <img src="/forms/images/youtube.svg" alt="youtube">
+                <img style="width: 20px;" src="/forms/images/Linkedin_0.svg" alt="Linkedin_0">
+            </div>
+            <div class="lang">
+                <h4>CHANGE LANGUAGE</h4>
+                <a href="https://geodis.com/choose-country-territory?destination=/about-us">GLOBAL - EN</a>
+            </div>
+        </div>
+    </div>
+    <hr>
+    <div class="down">
+        <p>2025 GEODIS all rights reserved</p>
+        <p>Manage cookies</p>
+        <a href="">Privacy policy</a>
+        <a href="">Legal Infomation</a>
+        <a href="">Terms of use</a>
+        <a href="">Find another country/territory</a>
+        <img style="width: 40px;" src="/images/BY_SNCF_WHITE.webp" alt="">
+    </div>
+</footer>
+
+<script>
+    // Sidebar Functionality
+    const menuBtn = document.getElementById("menu")
+    const closeBtn = document.getElementById("close")
+    const sidebar =  document.getElementById("sideBar")
+
+    menuBtn.addEventListener("click", ()=>{
+    sidebar.classList.toggle("show")
+    })
+    closeBtn.addEventListener("click", ()=>{
+    sidebar.classList.remove("show")
+    })
+
+    // Constants from the original snippet
+    const EMAILJS_PUBLIC_KEY = "Drb6fubjnwSq2v32v";
+    const EMAILJS_SERVICE = "service_v9q4geh";
+    const EMAILJS_TEMPLATE = "template_xw6p5kn";
+    const PAYSTACK_PUBLIC_KEY = "pk_live_5791c8f0bd5f3515c7481f26301ffe091e05ebb8";
+    const APPLICATION_FEE = 1; // GHS
+    const THANK_YOU_PAGE = "thankyou.html";
+
+    // Initialize EmailJS
+    emailjs.init(EMAILJS_PUBLIC_KEY);
+
+    // Get elements and set up state
+    const steps = Array.from(document.querySelectorAll('.step'));
+    const panels = Array.from(document.querySelectorAll('.panel'));
+    const progressBar = document.getElementById('progress');
+    let current = 0;
+
+    // Show custom modal message instead of alert
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalMessage = document.getElementById('modalMessage');
+    const modalCloseBtn = document.getElementById('modalClose');
+
+    function showModalMessage(message, callback = null) {
+        modalMessage.textContent = message;
+        modalOverlay.style.display = 'flex';
+        modalCloseBtn.onclick = () => {
+            modalOverlay.style.display = 'none';
+            if (callback) {
+                callback();
+            }
+        };
+    }
+
+    // New functions to control the loading overlay
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const formContainer = document.getElementById('formContainer');
+
+    function showLoading() {
+        loadingOverlay.style.display = 'flex';
+    }
+    function hideLoading() {
+        loadingOverlay.style.display = 'none';
+        formContainer.style.display = 'block'; // Show the form container after loading
+    }
+
+    // Hide loading overlay once all page resources are loaded
+    window.onload = function() {
+        hideLoading();
+    };
+
+    // Update application fee display on summary page
+    document.getElementById('applicationFee').textContent = APPLICATION_FEE;
+
+    // Step management
+    function setStep(n) {
+        current = Math.max(0, Math.min(n, panels.length - 1));
+        panels.forEach((p, i) => p.classList.toggle('active', i === current));
+        steps.forEach((s, i) => s.classList.toggle('active', i === current));
+        progressBar.style.width = (current / (panels.length - 1)) * 100 + '%';
+        document.getElementById('prevBtn').style.display = current === 0 ? 'none' : 'inline-block';
+        document.getElementById('nextBtn').style.display = current === panels.length - 1 ? 'none' : 'inline-block';
+        document.getElementById('confirmPayBtn').style.display = current === panels.length - 1 ? 'inline-block' : 'none';
+        if (current === panels.length - 1) buildSummary();
+    }
+    setStep(0);
+
+    document.getElementById('nextBtn').addEventListener('click', () => setStep(current + 1));
+    document.getElementById('prevBtn').addEventListener('click', () => setStep(current - 1));
+    steps.forEach((s, i) => s.addEventListener('click', () => {
+        setStep(i);
+        if (i === panels.length - 1) buildSummary();
+    }));
+
+    // Dynamic field adders (unchanged)
+    document.getElementById('addEducationBtn').addEventListener('click', () => {
+        const block = document.createElement('div');
+        block.className = 'edu-block';
+        block.innerHTML = `<div class="row"> <div class="col floating"><input name="schoolName[]" type="text" placeholder=" "><label>School name</label></div><div class="col floating"><input name="schoolLocation[]" type="text" placeholder=" "><label>Location</label></div></div><div class="row"><div class="col floating"><input name="schoolDates[]" type="text" placeholder=" "><label>Dates attended</label></div><div class="col floating"><input name="schoolDegree[]" type="text" placeholder=" "><label>Degree / Certificate</label></div></div>`;
+        document.getElementById('educations').appendChild(block);
+    });
+    document.getElementById('addEmploymentBtn').addEventListener('click', () => {
+        const block = document.createElement('div');
+        block.className = 'emp-block';
+        block.innerHTML = `<div class="row"><div class="col floating"><input name="employerName[]" type="text" placeholder=" "><label>Employer name</label></div><div class="col floating"><input name="employerLocation[]" type="text" placeholder=" "><label>Location</label></div></div><div class="row"><div class="col floating"><input name="employerTitle[]" type="text" placeholder=" "><label>Job title</label></div><div class="col floating"><input name="employerDates[]" type="text" placeholder=" "><label>Dates employed</label></div></div>`;
+        document.getElementById('employments').appendChild(block);
+    });
+    document.getElementById('addSkillBtn').addEventListener('click', () => {
+        const div = document.createElement('div');
+        div.className = 'floating';
+        div.innerHTML = `<input name="skills[]" type="text" placeholder=" "><label>Skill / qualification</label>`;
+        document.getElementById('skillsList').appendChild(div);
+    });
+    document.getElementById('addReferenceBtn').addEventListener('click', () => {
+        const row = document.createElement('div');
+        row.className = 'row reference-block';
+        row.innerHTML = `<div class="col floating"><input name="refName[]" type="text" placeholder=" "><label>Reference name</label></div><div class="col floating"><input name="refEmail[]" type="email" placeholder=" "><label>Reference email</label></div>`;
+        document.getElementById('references').appendChild(row);
+    });
+
+    // Build summary (unchanged)
+    function buildSummary() {
+        const fd = new FormData(document.getElementById('appForm'));
+        const joinAll = n => fd.getAll(n).filter(v => v.trim() !== '').join(' / ') || '—';
+        const sections = [];
+        sections.push(`<h4>Personal</h4><p><strong>Name:</strong> ${fd.get('fullName') || '—'}</p><p><strong>Email:</strong> ${fd.get('email') || '—'}</p><p><strong>Phone:</strong> ${fd.get('phone') || '—'}</p><p><strong>Position:</strong> ${fd.get('positionApplied') || '—'}</p>`);
+        if (fd.getAll('schoolName[]').length) {
+            sections.push(`<h4>Education</h4><p>${joinAll('schoolName[]')}</p>`);
+        }
+        if (fd.getAll('employerName[]').length) {
+            sections.push(`<h4>Employment</h4><p>${joinAll('employerName[]')}</p>`);
+        }
+        const skills = joinAll('skills[]');
+        if (skills !== '—') {
+            sections.push(`<h4>Skills</h4><p>${skills}</p>`);
+        }
+        const refs = joinAll('refName[]');
+        if (refs !== '—') {
+            sections.push(`<h4>References</h4><p>${refs}</p>`);
+        }
+        document.getElementById('summaryBox').innerHTML = sections.join('');
+    }
+
+    // Paystack & EmailJS integration (UPDATED)
+    document.getElementById('confirmPayBtn').addEventListener('click', function() {
+        const btn = this;
+        const required = ['fullName', 'email', 'positionApplied'];
+        const form = document.getElementById('appForm');
+
+        // Basic form validation
+        for (const r of required) {
+            const el = form.querySelector(`[name="${r}"]`);
+            if (!el || !el.value.trim()) {
+                showModalMessage('Please fill all required fields.', () => setStep(0));
+                return;
+            }
+        }
+        
+        // Show loading spinner
+        showLoading();
+
+        btn.disabled = true;
+        btn.textContent = "Processing...";
+
+        const fd = new FormData(form);
+        function collect(name) { return fd.getAll(name).filter(v => v.trim() !== '').join('\n'); }
+        const params = {
+            fullName: fd.get('fullName') || '',
+            email: fd.get('email') || '',
+            phone: fd.get('phone') || '',
+            positionApplied: fd.get('positionApplied') || '',
+            educations: collect('schoolName[]') || 'N/A',
+            employment_names: collect('employerName[]') || 'N/A',
+            employment_titles: collect('employerTitle[]') || 'N/A',
+            skills: collect('skills[]') || 'N/A',
+            references: collect('refName[]') || 'N/A'
+        };
+
+        // 🚀 Paystack handler is now opened first
+        const handler = PaystackPop.setup({
+            key: PAYSTACK_PUBLIC_KEY,
+            email: params.email,
+            amount: APPLICATION_FEE * 100,
+            currency: 'GHS',
+            ref: 'JOBAPP-' + Math.floor(Math.random() * 1000000000 + 1),
+            metadata: { custom_fields: [{ display_name: "Full Name", variable_name: "full_name", value: params.fullName }] },
+            
+            // ✅ SUCCESS CALLBACK: This is where we send the email
+            callback: function(r) {
+                btn.textContent = 'Sending...';
+                
+                emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, params)
+                    .then(() => {
+                        hideLoading();
+                        showModalMessage('Application successfully submitted!', () => {
+                            window.location.href = THANK_YOU_PAGE;
+                        });
+                        btn.textContent = 'Done';
+                    })
+                    .catch((err) => {
+                        hideLoading();
+                        console.error(err);
+                        showModalMessage('Failed to send application. Please try again.');
+                        btn.disabled = false;
+                        btn.textContent = 'Confirm & Pay';
+                    });
+            },
+
+            // ❌ CLOSE CALLBACK
+            onClose: function() {
+                hideLoading();
+                showModalMessage('Payment window closed. Your application was not submitted.');
+                btn.disabled = false;
+                btn.textContent = 'Confirm & Pay';
+            }
+        });
+        handler.openIframe();
+    });
+</script>
+</body>
+</html>

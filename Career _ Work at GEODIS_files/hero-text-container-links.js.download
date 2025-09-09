@@ -1,0 +1,17 @@
+document.querySelectorAll('.coh-container.is-text-container').forEach(function(divElement) {
+    // Find the inner <a> tag with the class .is-text-link
+    const innerLink = divElement.querySelector('a.is-text-link');
+
+    if (innerLink && innerLink.href != '') {
+        const aElement = document.createElement('a');
+
+        aElement.className = divElement.className;
+        aElement.href = innerLink.href;
+        aElement.target = innerLink.target;
+        aElement.innerHTML = divElement.innerHTML;
+
+        divElement.parentNode.replaceChild(aElement, divElement);
+
+        aElement.querySelector('a.is-text-link').remove();
+    }
+});

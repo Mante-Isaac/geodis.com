@@ -1,0 +1,189 @@
+export const GeodisSwiper = (() => {
+
+  const setArrowColor = (swiper, arrowColors) => {
+    if (arrowColors[swiper.realIndex] === '1') {
+      if (swiper.navigation.nextEl) {
+          swiper.navigation.nextEl.classList.add('blue');
+      }
+      if (swiper.navigation.prevEl) {
+          swiper.navigation.prevEl.classList.add('blue');
+      }
+      if (swiper.navigation.el) {
+          swiper.pagination.el.classList.add('blue');
+      }
+    } else {
+      if (swiper.navigation.nextEl) {
+        swiper.navigation.nextEl.classList.remove('blue');
+      }
+      if (swiper.navigation.prevEl) {
+        swiper.navigation.prevEl.classList.remove('blue');
+      }
+      if (swiper.navigation.el) {
+        swiper.pagination.el.classList.remove('blue');
+      }
+    }
+  };
+
+  const processAriaAttributes = (swiper) => {
+    const nextButton = swiper.el.querySelector('.swiper-button-next');
+    const prevButton = swiper.el.querySelector('.swiper-button-prev');
+
+    const index = swiper.realIndex + 1;
+    const total = swiper.slides.length / 2; // Divided by in loop mode (always active)
+    const currentSlide = swiper.slides[swiper.activeIndex]; // Get active index and not real index here, to get the "physical" slide in DOM
+    const previousSlide = swiper.slides[swiper.previousIndex]; // previousIndex return the "physical" index in the DOM
+
+    if (nextButton) {
+      const nextIndex = index + 1 > total ? 1 : (index + 1); // This calc works only if swiper is on loop mode
+      nextButton.setAttribute('aria-label', Drupal.t('Next slide: ') + `${nextIndex}/${total}`);
+    }
+
+    if (prevButton) {
+      const prevIndex = (index - 1) <= 0 ? total : (index - 1); // This calc works only if swiper is on loop mode
+      prevButton.setAttribute('aria-label', Drupal.t('Previous slide: ') + `${prevIndex}/${total}`);
+    }
+
+    if (currentSlide) {
+      currentSlide.focus({ preventScroll: true });
+      currentSlide.setAttribute('aria-current', 'true');
+      currentSlide.setAttribute('aria-hidden', 'false');
+    }
+
+    if (previousSlide) {
+      previousSlide.setAttribute('aria-current', 'false');
+    }
+
+    swiper.slides.forEach(slide => {
+      slide.removeAttribute('role');
+      slide.removeAttribute('aria-label');
+      if (slide !== currentSlide) {
+        slide.setAttribute('aria-hidden', 'true');
+      }
+    });
+  };
+
+  const initPlayPause = (component, swiper) => {
+    const playPauseButton = component.querySelector('.play-pause-button');
+    if (!playPauseButton) {
+      return;
+    }
+
+    playPauseButton.addEventListener('click', () => {
+      if (swiper.autoplay.running) {
+        swiper.autoplay.stop();
+      } else {
+        swiper.autoplay.start();
+      }
+    });
+
+    swiper.on('autoplayPause autoplayStop', () => {
+      playPauseButton.classList.remove('pause-icon');
+      playPauseButton.classList.add('play-icon');
+    });
+
+    swiper.on('autoplayStart autoplayResume', () => {
+      playPauseButton.classList.remove('play-icon');
+      playPauseButton.classList.add('pause-icon');
+    });
+
+    component.querySelectorAll('input.form-text').forEach(input => {
+      input.addEventListener('click', () => swiper.autoplay.stop());
+      input.addEventListener('blur', () => swiper.autoplay.start());
+    });
+  };
+
+  const initialize = (component, options = {}) => {
+    const swiperElement = component.querySelector('.swiper');
+
+    if (!swiperElement) return;
+
+    let swiperId = null;
+
+    let swiperDOMElements = document.querySelectorAll('.swiper');
+    if (swiperDOMElements.length > 1) {
+
+      for (let i = 0; i < swiperDOMElements.length; i++) {
+        if (swiperDOMElements[i].classList.contains('swiper-initialized')) {
+          continue;
+        }
+
+        let swiperId = 'swiper-id-' + i;
+        swiperDOMElements[i].setAttribute('swiper-id', swiperId);
+
+        swiperDOMElements[i].querySelectorAll('.swiper-pagination').forEach(el => {
+          el.classList.add(swiperId);
+        });
+
+        swiperDOMElements[i].querySelectorAll('.swiper-button-next').forEach(el => {
+          el.classList.add(swiperId);
+        });
+
+        swiperDOMElements[i].querySelectorAll('.swiper-button-prev').forEach(el => {
+          el.classList.add(swiperId);
+        });
+
+      }
+
+      swiperId = swiperElement.getAttribute('swiper-id');
+
+    }
+
+    const slideImages = swiperElement.querySelectorAll(".swiper-slide") || [];
+    const arrowColors = [];
+    const autoplayEnabled = swiperElement.dataset.autoplay === '1';
+    const autoplaySpeed = parseInt(swiperElement.dataset.autoplaySpeed) || 5000;
+
+    let swiper = new Swiper(swiperElement, {
+      pagination: {
+        el: swiperId ? '.swiper-pagination.' + swiperId : '.swiper-pagination',
+        clickable: true,
+      },
+      speed: 1000,
+      autoplay: {
+        enabled: autoplayEnabled,
+        delay: autoplaySpeed
+      },
+      navigation: {
+        nextEl: swiperId ? '.swiper-button-next.' + swiperId : '.swiper-button-next',
+        prevEl: swiperId ? '.swiper-button-prev.' + swiperId : '.swiper-button-prev',
+      },
+      keyboard: {
+        enabled: true,
+        onlyInViewport: false,
+      },
+      loop: true,
+      a11y: true,
+      on: {
+        afterInit: processAriaAttributes,
+      },
+      ...options,
+    });
+
+    swiper.on('realIndexChange', () => processAriaAttributes(swiper));
+
+    slideImages.forEach( slide => {
+      const images = slide.querySelectorAll(".swiper-slide-img img, .swiper-slide-img video");
+      if (!slide.classList.contains('first-slide')) {
+        images.forEach(image => {
+          image.setAttribute('loading', 'lazy');
+        });
+      } else {
+        images.forEach(image => {
+          image.setAttribute('fetchpriority', 'high');
+        });
+      }
+      arrowColors.push(slide.dataset.arrowColor);
+    });
+
+    setArrowColor(swiper, arrowColors);
+    swiper.on('slideChange', () => setArrowColor(swiper, arrowColors));
+
+    if (autoplayEnabled) {
+      initPlayPause(component, swiper);
+    }
+  };
+
+  return {
+    initialize,
+  };
+})();

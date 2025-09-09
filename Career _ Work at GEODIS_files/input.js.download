@@ -1,0 +1,41 @@
+(function($, Drupal, once) {
+
+    const checkInputFilled = (input) => {
+        let value = input.value;
+        if (value.length > 0) {
+            $(input).parent().addClass('filled')
+        } else {
+            $(input).parent().removeClass('filled');
+        }
+    }
+
+    const classes = '.form-item.form-type-textfield,' +
+        '.form-item.form-type-password,' +
+        '.form-item.form-type-email,' +
+        '.form-item.form-type-webform-email-multiple,' +
+        '.form-item.form-type-tel,' +
+        '.form-item.form-type-textarea';
+
+    Drupal.behaviors.GeodisInitInputs = {
+        attach: function(context) {
+            once('GeodisInitInputs', classes, context).forEach((item) => {
+                const input = item.querySelector('input, textarea');
+
+                $(input).focus(() => {
+                    $(input).parent().addClass('focus');
+                })
+
+                $(input).focusout(() => {
+                    $(input).parent().removeClass('focus');
+                })
+
+                $(input).on('input change paste keyup', (e) => {
+                    let input = e.target;
+                    checkInputFilled(input);
+                });
+
+                checkInputFilled(input);
+            });
+        }
+    }
+})(jQuery, Drupal, once)

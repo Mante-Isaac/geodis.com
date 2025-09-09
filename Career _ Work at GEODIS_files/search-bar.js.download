@@ -1,0 +1,181 @@
+(function() {
+    const navigation        = document.querySelector('#header-main-nav.navigation__main-nav');
+    const searchComponent   = navigation.querySelector('#header-main-nav .navigation__main-nav__search');
+    const searchButton      = searchComponent.querySelector('.search-button');
+    const closeButton       = searchComponent.querySelector('.search-close-button');
+    const searchForm        = searchComponent.querySelector('form');
+    const searchInput       = searchForm.querySelector('input');
+    const breadcrumb        = document.querySelector('header nav#system-breadcrumb');
+
+    const blackLayer = document.createElement('div');
+    blackLayer.classList.add('black-layer');
+    const breadcrumbBlackLayer = blackLayer.cloneNode(true);
+    blackLayer.style.zIndex = '6';
+
+    const isMobile = () => {
+        return window.innerWidth <= 1024 || document.body.classList.contains('force-mobile-mode');
+    }
+
+    const isOpen = () => {
+        return navigation.classList.contains('search-bar-open');
+    }
+
+    const isActive = () => {
+        return searchComponent.classList.contains('is-active');
+    }
+
+    const mobileMenuIsActive = () => {
+        return navigation.querySelector('.navigation__main-nav__menu').classList.contains('mobile-active')
+    }
+
+    const disable = () => {
+
+        if (!isActive()) return;
+
+        navigation.classList.remove('search-bar-open');
+
+        if (breadcrumb) breadcrumb.classList.remove('system-breadcrumb__search-bar-is-open');
+        searchComponent.classList.remove('is-active');
+        searchInput.blur();
+
+        navigation.querySelector('.mobile-burger').style.removeProperty('display');
+
+        if (!mobileMenuIsActive()) {
+            document.querySelector('header.header[role="banner"]').style.removeProperty('z-index');
+        }
+
+        if (isMobile()) {
+            disableBlackLayer();
+        }
+    }
+
+    const enable = () => {
+
+        if (isActive()) return;
+
+        navigation.classList.add('search-bar-open');
+        if (breadcrumb) breadcrumb.classList.add('system-breadcrumb__search-bar-is-open');
+        document.querySelector('header.header[role="banner"]').style.zIndex = '7';
+
+        searchComponent.classList.add('is-active');
+        searchInput.focus({
+            preventScroll: true,
+            focusVisible: true
+        });
+
+        if (isMobile()) {
+            navigation.querySelector('.mobile-burger').style.display = 'none';
+            enableBlackLayer();
+        }
+    }
+
+    const enableBlackLayer = () => {
+        document.querySelector('.layout-container').append(blackLayer);
+        document.body.style.overflow = 'hidden';
+
+        if (breadcrumb && breadcrumb.classList.contains('white')) {
+            breadcrumb.style.position = "relative";
+            breadcrumb.append(breadcrumbBlackLayer);
+        }
+    }
+
+    const disableBlackLayer = () => {
+        blackLayer.remove();
+        document.body.style.removeProperty('overflow');
+
+        if (breadcrumb && breadcrumb.classList.contains('white')) {
+            breadcrumb.style.removeProperty("position");
+            breadcrumbBlackLayer.remove();
+        }
+    }
+
+    const resetEvents = () => {
+        searchComponent.onmouseover = null;
+        searchComponent.onmouseout = null;
+        searchInput.onfocus = null;
+        searchButton.onclick = null;
+        document.onclick = null;
+        searchButton.onmouseover = null;
+        closeButton.onclick = null;
+        blackLayer.onclick = null;
+    }
+
+    const initOnMobile = () => {
+
+        closeButton.onclick = () => {
+            disable();
+        }
+
+        blackLayer.onclick = (e) => {
+            if (isActive() && isOpen()) {
+                disable();
+            }
+        }
+    }
+
+    const initOnDesktop = () => {
+
+        searchComponent.onmouseover = () => {
+            navigation.classList.add('search-bar-open');
+        }
+
+        searchComponent.onmouseout = () => {
+            if (isActive()) return;
+            navigation.classList.remove('search-bar-open');
+        }
+
+        searchInput.onfocus = () => {
+            enable();
+        }
+
+        document.onclick = (e) => {
+            if (!e.target.closest('#header-main-nav .navigation__main-nav__search') && isActive()) {
+                disable();
+            }
+        }
+    }
+
+    const submit = () => {
+        //alert('Search function is not available yet');
+        /**
+         * NOW ITS AVAILABLE \o/ :D
+          */
+        sessionStorage.setItem('searchFromPage', window.location.href);
+        sessionStorage.setItem('searchFromPage_title', document.title);
+        searchForm.submit();
+    }
+
+    const init = () => {
+        resetEvents();
+        isMobile() ? initOnMobile() : initOnDesktop();
+
+        searchButton.onclick = () => {
+            if (isActive() && isOpen()) {
+                submit();
+            } else {
+                enable();
+            }
+        }
+    }
+
+    searchForm.onsubmit = (e) => {
+        e.preventDefault();
+        submit();
+    }
+
+    init();
+
+    // Make the responsive more stable: reset the search bar but not when soft keyboard appears
+    let windowWidth = window.innerWidth;
+    window.addEventListener('resize', () => {
+        let newWidth = window.innerWidth;
+
+        if (newWidth === windowWidth) {
+            return;
+        }
+
+        disable();
+        init();
+        windowWidth = newWidth;
+    });
+})()

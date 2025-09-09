@@ -1,0 +1,74 @@
+(function($, Drupal) {
+    'use strict';
+
+    const ENTER = 13;
+    const TAB = 9;
+    const ESC = 27;
+    const SPACE = 32;
+
+    const clickedByEnter = [
+        '[role="button"]',
+        '[role="link"]',
+    ].join();
+
+    const getKeyCode = (e) => {
+        return (e.keyCode ? e.keyCode : e.which);
+    }
+
+    const handleEnterKeyPress = () => {
+        $(clickedByEnter).on('keypress', (e) => {
+            let $button = $(e.currentTarget),
+                parent = $button.parent(),
+                parentLink = parent.find('a[aria-expanded]');
+
+            if (getKeyCode(e) === ENTER) { // on press Enter
+                $button.click();
+                if (parentLink.attr('aria-expanded') === 'false') {
+                    parent.find('a.submenu-item-link').first().focus();
+                }
+            }
+
+            if (getKeyCode(e) === SPACE) { // on press Space
+                e.preventDefault();
+                $button.click();
+                if (parentLink.attr('aria-expanded') === 'false') {
+                    parent.find('a.submenu-item-link').first().focus();
+                }
+            }
+        });
+    }
+
+    const handleFocusMode = () => {
+        $(document).on('keydown', (e) => {
+            if (getKeyCode(e) === TAB) {
+                if ($(document.body).hasClass('keyboard-navigation-active')) return;
+                $(document.body).addClass('keyboard-navigation-active');
+            }
+
+            if (getKeyCode(e) === ESC) {
+                let parentLink = $('a[aria-expanded="true"][role="button"]').first(),
+                    parent = parentLink.closest('li'),
+                    languageForm = parentLink.siblings('.language-selector-desktop').find('.choice_language_form');
+
+                if (languageForm.length && $(parent).hasClass('open')) {
+                    $(languageForm).stop(true, true).slideUp(250);
+                }
+
+                if ($(parent).hasClass('open')) {
+                    parent.removeClass('open');
+                }
+                parentLink.focus();
+            }
+        });
+        $(document).on('mousedown', (e) => {
+            if (!$(document.body).hasClass('keyboard-navigation-active')) return;
+            $(document.body).removeClass('keyboard-navigation-active');
+        });
+    }
+
+    $(document).ready(() => {
+        handleEnterKeyPress();
+        handleFocusMode();
+    });
+
+})(jQuery, Drupal);

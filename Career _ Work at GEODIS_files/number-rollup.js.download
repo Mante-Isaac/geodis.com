@@ -1,0 +1,69 @@
+(function($, Drupal, once) {
+
+    const mainClass = '.rolling-number-animation';
+    const animationDuration = 2000;
+    const startNumber = 0;
+
+    const isInViewport = (element) => {
+        return new Promise(resolve => {
+            const observer = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    observer.unobserve(element);
+                    resolve(entry.isIntersecting);
+                });
+            });
+            observer.observe(element);
+        });
+    }
+
+    const animate = (element, start, end, duration) => {
+
+
+      let decimalPlaces = (end.includes('.') ? end.split('.')[1].length : 0);
+
+      end = parseFloat(end);
+        $({count: start}).animate({count: end}, {
+            duration: duration,
+            easing: 'linear',
+            step: function() {
+              let formattedNumber = Drupal.formatNumber(this.count.toFixed(decimalPlaces), 3);
+              $(element).text(formattedNumber)
+            },
+            complete: function() {
+              let formattedNumber = Drupal.formatNumber(end.toFixed(decimalPlaces), 3);
+              $(element).text(formattedNumber);
+            }
+        });
+    }
+
+    const initAnimation = (element, end) => {
+        let isAnimating = $(element).attr('animating') === 'true';
+
+        isInViewport(element).then((isVisible) => {
+            if (isVisible && !isAnimating) {
+                $(element).attr('animating', true);
+                setTimeout(() => {
+                    animate(element, startNumber, end, animationDuration);
+                }, 100);
+            }
+
+        });
+    }
+
+    Drupal.behaviors.GeodisSSRollingNumberAnimation = {
+        attach: function(context) {
+            once('GeodisSSRollingNumberAnimation', mainClass, context).forEach((element) => {
+                $(element).attr('animating', false);
+                let number = $(element).text().trim();
+
+                $(element).text(startNumber);
+
+                initAnimation(element, number);
+                window.addEventListener('scroll', () => {
+                    initAnimation(element, number);
+                });
+            });
+        }
+    }
+
+})(jQuery, Drupal, once)

@@ -1,0 +1,49 @@
+(function ($, Drupal, once) {
+
+  Drupal.behaviors.footerAccordion = {
+    attach: function (context) {
+      once('footerAccordion', '.accordion', context).forEach((accordion, index) => {
+        // Get the current accordions panel.
+        let accordionPanel = $(accordion).next('.panel');
+
+        // Trigger checking the opened panel during the window resize.
+        $(window).resize(function () {
+          checkOpenPanel(accordionPanel);
+        });
+
+        // Check if the current accordion is active.
+        if ($(accordion).hasClass('active')) {
+          let openPanel = $(accordion).next('.panel-open');
+          // Trigger displaying a menu from the opened panel.
+          checkOpenPanel(openPanel);
+        }
+
+        accordion.addEventListener('click', function () {
+          let panel = $(this).next('.panel');
+
+          $(this).toggleClass('active');
+          $(panel).toggleClass('panel-open');
+
+          checkOpenPanel(panel);
+        });
+      });
+    },
+  };
+
+  /**
+   * Handler for checking the opened panels.
+   *
+   * @param panel<HTMLElement>
+   */
+  const checkOpenPanel = (panel) => {
+    if ($(panel).hasClass('panel-open')) {
+      var scrollHeight = $(panel)[0].scrollHeight;
+      // Set max-height according to the scrollHeight value.
+      $(panel).css('max-height', scrollHeight + 'px');
+    }
+    else {
+      $(panel).css('max-height', '0px');
+    }
+  };
+
+})(jQuery, Drupal, once);

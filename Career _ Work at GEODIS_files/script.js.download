@@ -1,0 +1,27 @@
+(function (Drupal, $, once) {
+    Drupal.behaviors.GeodisBlockCertifications = {
+        attach: function (context, settings) {
+            once('GeodisBlockCertifications', '.block-certifications-slider', context).forEach(block => {
+                $(block).slick({
+                    slidesToShow: 6,
+                    responsive: [
+                        {
+                            breakpoint: 768,
+                            settings: {
+                                slidesToShow: 4,
+                            }
+                        },
+                        {
+                            breakpoint: 480,
+                            settings: {
+                                slidesToShow: 2,
+                                centerMode: true,
+                                centerPadding: '60px',
+                            }
+                        }
+                    ]
+                });
+            });
+        }
+    }
+})(Drupal, jQuery, once);

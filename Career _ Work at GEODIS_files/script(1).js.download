@@ -1,0 +1,204 @@
+(function ($, Drupal, once) {
+    "use strict";
+
+    const isDropdownVersion = (component) => {
+        return component.classList.contains('version-dropdown');
+    }
+
+    /**
+     *  Adjust the height of the component content dynamically according to the current
+     *
+     */
+    const adjustContentHeight = (component) => {
+        let contentActive = component.querySelector('.tabs-component__content .tabs-component__tab-item.is-active');
+        let height = contentActive ? $(contentActive).outerHeight(true) : 0;
+        component.querySelector('.tabs-component__content').style.height = height + 'px';
+    }
+
+    /**
+     * Manage dropdown version on desktop. This version move the dropdown inside the components allowed
+     * Currently:
+     * - Key Figures Customer Story
+     *
+     */
+    const initDropdownVersion = (component) => {
+
+        /** Insert dropdown into customer story blocks*/
+        let items = component.querySelectorAll('.tabs-dropdown-adapted');
+
+        for (let item of items) {
+            let box = item.querySelector('.box-for-dropdown-first');
+            if (box) {
+                let dropdown = component.querySelector('.tabs-component__navigation .dropdown').cloneNode(true);
+                dropdown.classList.add('content-dropdown');
+                box.insertBefore(dropdown, box.querySelector(':first-child'));
+                $(dropdown).find('select').select2({
+                    'minimumResultsForSearch': -1,
+                    'theme': 'geodis-classic-blue',
+                    'width': '100%',
+                });
+            }
+        }
+    }
+
+    const checkContentDropdown = (component) => {
+        let activeContent = component.querySelector('.tabs-component__content .tabs-component__tab-item.is-active');
+        let mainDropdown = component.querySelector('.tabs-component__navigation .dropdown');
+        if (window.matchMedia('(min-width: 1024px)').matches) {
+            mainDropdown.querySelector('.dropdown__selector').style.removeProperty('width');
+
+            if (activeContent && !activeContent.querySelector('.content-dropdown') && isDropdownVersion(component)) {
+                mainDropdown.style.display = 'flex';
+            } else {
+                mainDropdown.style.display = 'none';
+            }
+        }
+        else {
+            mainDropdown.style.display = 'block';
+            mainDropdown.querySelector('.dropdown__selector').style.width = "auto";
+        }
+    }
+
+    const switchContent = (component, contentId) => {
+        let activeContent = component.querySelector('.tabs-component__content .tabs-component__tab-item.is-active');
+        if (activeContent) {
+            activeContent.classList.remove('is-active');
+        }
+
+        let content = component.querySelector(`.tabs-component__content .tabs-component__tab-item[data-content-id="${contentId}"]`);
+        if (content) {
+            content.classList.add('is-active');
+        }
+
+        checkContentDropdown(component);
+        adjustContentHeight(component);
+        //adjustNavigationWidth(component);
+    }
+
+    const initDropzone = (component) => {
+        let dropzone = $(component).find('.tabs-component__content').first();
+        // Not class dx-preview-placeholder from node preview
+        let elements = $(dropzone).children().not('.dx-preview-placeholder');
+        $(elements).each((key, element) => {
+            $(element).addClass('tabs-component__tab-item');
+            $(element).attr('data-content-id', '#' + key);
+            if (key === 0) {
+                $(element).addClass('is-active');
+            }
+        });
+    }
+
+    const init = (component) => {
+        initDropzone(component);
+
+        if (isDropdownVersion(component)) {
+            initDropdownVersion(component);
+        }
+
+        checkContentDropdown(component);
+        adjustContentHeight(component);
+        //adjustNavigationWidth(component);
+
+        let tabs = component.querySelectorAll('.tabs-component__navigation .tabs ul li.tabs-component__tab');
+        let selects = component.querySelectorAll('.dropdown__selector select');
+
+        /** Tab select behavior */
+        for (let tab of tabs) {
+            tab.onclick = (e) => {
+                let isActive = tab.classList.contains('is-active');
+                if (!isActive) {
+                    let contentId = tab.getAttribute('data-content-id');
+                    component.querySelector('.tabs-component__navigation .tabs ul li.tabs-component__tab.is-active').classList.remove('is-active');
+                    tab.classList.add('is-active');
+
+                    for (let option of selects[0].options) {
+                        if (option.value === contentId) {
+                            option.selected = true;
+                            jQuery(selects[0]).change();
+                        }
+                    }
+
+                    switchContent(component, contentId);
+                }
+            }
+        }
+
+        /** Dropdown select behavior */
+        for (let select of selects) {
+
+            $(select).select2({
+                'minimumResultsForSearch': -1,
+                'theme': 'geodis-classic-blue',
+                'width': '100%',
+            });
+
+            $(select).on('change', (e) => {
+                let contentId = e.target.value;
+
+                // Connect tabs
+                if (!isDropdownVersion(component)) {
+                    component.querySelector('.tabs-component__navigation .tabs ul li.tabs-component__tab.is-active').classList.remove('is-active');
+                    let selectedTab = Array.from(tabs.values()).filter(tab => tab.getAttribute('data-content-id') === contentId)[0];
+                    selectedTab.classList.add("is-active");
+                }
+
+                // Synchronize selects
+                if (isDropdownVersion(component)) {
+                    let mainMobileSelect = component.querySelector('.tabs-component__navigation .dropdown select');
+                    let nextSelect = component.querySelector(`.tabs-component__content .tabs-component__tab-item[data-content-id="${contentId}"] .dropdown.content-dropdown select`);
+
+                    if (nextSelect) {
+                        for (let option of nextSelect.options) {
+                            if (option.value === contentId) {
+                                option.selected = true;
+                                //$(nextSelect).next('.select-styled').find('span').text(option.innerText);
+                                $(nextSelect).trigger('change.select2');
+                            }
+                        }
+                    }
+
+                    for (let option of mainMobileSelect.options) {
+                        if (option.value === contentId) {
+                            option.selected = true;
+                            //$(mainMobileSelect).next('.select-styled').find('span').text(option.innerText);
+                            $(mainMobileSelect).trigger('change.select2');
+                        }
+                    }
+                }
+
+                switchContent(component, contentId);
+            });
+        }
+    }
+
+    Drupal.behaviors.processTabsComponentsV2 = {
+        attach: function(context) {
+            once('processTabsComponentsV2', '.ss-custom-component.tabs-component-v2', context).forEach((component) => {
+                init(component);
+            });
+        }
+    }
+
+    // Waiting all images are loaded
+    Promise.all(Array.from(document.images).filter(img => !img.complete).map(img => new Promise(resolve => { img.onload = img.onerror = resolve; }))).then(() => {
+        document.querySelectorAll('.ss-custom-component.tabs-component-v2').forEach((component) => {
+            checkContentDropdown(component);
+            adjustContentHeight(component);
+        });
+    });
+
+    window.addEventListener('resize', () => {
+        document.querySelectorAll('.ss-custom-component.tabs-component-v2').forEach((component) => {
+            checkContentDropdown(component);
+            adjustContentHeight(component);
+        });
+    });
+
+    $(window).on('load', function() {
+        document.querySelectorAll('.ss-custom-component.tabs-component-v2').forEach((component) => {
+            checkContentDropdown(component);
+            adjustContentHeight(component);
+        });
+    });
+
+})(jQuery, Drupal, once);

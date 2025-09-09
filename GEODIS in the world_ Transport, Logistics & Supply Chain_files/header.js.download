@@ -1,0 +1,602 @@
+(function ($, Drupal, once) {
+
+    const ESC = 27;
+
+    const mainContent = document.getElementById("main-content-page");
+    const navigation = document.getElementById("header-navigation");
+    const mainNav = document.getElementById("header-main-nav");
+    const breadcrumb = navigation.querySelector('nav#system-breadcrumb');
+    const burgerButton = mainNav.querySelector('.mobile-burger');
+    const menu = mainNav.querySelector('.menu');
+    let menuIsWhite = document.querySelector('[white-menu-template]') ?
+        document.querySelector('[white-menu-template]').getAttribute('white-menu-template')
+        : false;
+    if (document.querySelector('[disable-white-menu]')) {
+      menuIsWhite = false;
+    }
+    const topBar = document.getElementById('header-top-bar');
+    const blueMenuItem = topBar.querySelectorAll('#header-top-bar .has-submenu:not(.submenu)');
+    const header = document.querySelector('header[role="banner"]');
+
+    function removeAllOpen() {
+        if (blueMenuItem.length === 0) return;
+        blueMenuItem.forEach(elem => {
+            if (!elem.classList.contains('open')) return;
+
+            let button = $(elem).find('a[aria-expanded]').first();
+            $(elem).find('ul, .choice_language_form').first().stop(true, true).slideUp(250, () => {
+                elem.classList.remove('open');
+                $('select').trigger('select2:close');
+            });
+        });
+    }
+
+    $(window).on('scroll', () => {
+        removeAllOpen();
+    })
+
+    $(window).on('click', (e) => {
+        let current = e.target;
+        if (
+            !$(current).parents('#header-top-bar .has-submenu:not(.submenu), .select2-container').length
+            && !$(current).is('#header-top-bar .has-submenu:not(.submenu)')
+        ) {
+            removeAllOpen();
+        }
+    });
+
+    // "open" class only for desktop (mobile = "show", see at initMobileMenu() )
+    if (blueMenuItem.length) {
+        blueMenuItem.forEach(elem => {
+          let button = $(elem).find('a[aria-expanded]').first();
+
+          Drupal.theme.handleAriaExpanded(button);
+
+          $(elem).on('click', function (e) {
+              let submenu = $(e.currentTarget).find('.choice_language_form');
+
+              if (!$(e.currentTarget).hasClass('open') && submenu.length) {
+                  $(submenu).stop(true, true).slideDown(250);
+              }
+          });
+
+          $(once('header-top-bar', elem)).hover(function (e) {
+
+              var timeoutId = setTimeout(function () {
+                  if ($(e.currentTarget).hasClass('open')) return;
+                  let submenu = $(e.currentTarget).find('ul').first();
+                  if (submenu.length !== 0) {
+                      $(submenu).stop(true, true).slideDown(250);
+                      removeAllOpen();
+
+                      if (window.matchMedia("(min-width: 1024px)").matches) {
+                          let start = $(submenu).offset().left;
+                          let width = $(submenu).width();
+                          let end = start + width;
+                          let screenSize = window.innerWidth;
+
+                          if (end >= screenSize) {
+                              $(submenu).css('right', '0');
+                          }
+                      }
+                  }
+
+              }, 250);
+
+              $(e.currentTarget).data('timeoutId', timeoutId);
+          }, function (e) {
+              clearTimeout($(e.currentTarget).data('timeoutId'));
+              if ($(e.currentTarget).hasClass('open')) return;
+              $(e.currentTarget).find('ul').first().stop(true, true).slideUp(250);
+          });
+
+          $(elem).on('click', function (e) {
+              let current = e.currentTarget;
+              if (e.target !== current
+                  && current.classList.contains('open')
+                  && !$(e.target).is('.dropdown-country-selector')
+              ) {
+                  return;
+              }
+
+              if (current.classList.contains('open')) {
+                  removeAllOpen();
+                  current.classList.remove('open');
+              } else {
+                  removeAllOpen();
+                  current.classList.add('open');
+              }
+          });
+
+          $(elem).find('a').first().on('click', (e) => {
+              let submenu = $(e.currentTarget).siblings('.language-selector-desktop').find('.choice_language_form');
+
+              if ($(elem).hasClass('open')) {
+                  if (submenu.length)  $(submenu).stop(true, true).slideUp(250);
+
+                  e.stopPropagation();
+                  //e.stopImmediatePropagation();
+                  $(elem).removeClass('open')
+              }
+          });
+      });
+    }
+
+    const refreshMainPadding = () => {
+        let firstElement = navigation.querySelector('#header-top-bar');
+        let headerHeight = Math.ceil(navigation.querySelector('.navigation__scrolled_animate_menus').getBoundingClientRect().bottom - firstElement.getBoundingClientRect().top);
+        navigation.style.height = headerHeight + 'px';
+
+          if (!menuIsWhite && mainContent) {
+              // Adjust main content position with flash messages
+              let topBarHeight = firstElement ? firstElement.offsetHeight : '0';
+              let customerAdvisoryHeight = navigation.querySelector('#header-customer-advisory') ? navigation.querySelector('#header-customer-advisory').offsetHeight : '0';
+
+              if (isScrollingDown) {
+                  mainContent.style.paddingTop = 'calc(' + (topBarHeight) + 'px)';
+              } else {
+                  mainContent.style.paddingTop = 'calc(' + (topBarHeight + customerAdvisoryHeight) + 'px)';
+              }
+          }
+    }
+
+    function handleWindowResize() {
+
+        let windowWidth = window.innerWidth;
+
+        // When the window is resized
+        window.addEventListener('resize', function () {
+
+            // If the window width has changed
+            if (windowWidth !== window.innerWidth) {
+
+                // Store new window width in the variable and run your desired function
+                windowWidth = window.innerWidth;
+
+                controlBreadcrumbTooLarge();
+                controlMenuTooLarge();
+                refreshMainPadding();
+            }
+        });
+
+    }
+
+    /**
+     * The following constant is used to manage the menu with too many items
+     * (security) Using the logo and menu positions
+     */
+    let mainNavWidth = null;
+
+    let lastScrollPosition = 0;
+    let currentScrollPosition = 0;
+    let firstScrollDownPosition = null;
+    let isScrollingDown = null;
+
+    const initWhiteContentAfterTheme = () => {
+        if (mainNav) {
+          mainNav.classList.add('white');
+          mainNav.classList.remove('transparent');
+        }
+
+        if (breadcrumb) {
+            breadcrumb.classList.add('white');
+            mainContent.classList.add('has-breadcrumb');
+        }
+
+        if (mainContent) {
+            mainContent.classList.add('show-after-header');
+        }
+    }
+
+    const initDefaultTheme = () => {
+        if (mainNav) mainNav.classList.add('transparent');
+        if (breadcrumb) breadcrumb.classList.add('transparent');
+    }
+
+    const playDefaultTheme = () => {
+        if (currentScrollPosition <= 0) {
+            if (mainNav) {
+                mainNav.classList.remove("white");
+                mainNav.classList.add("transparent");
+            }
+            if (breadcrumb) {
+                breadcrumb.classList.remove("white");
+                breadcrumb.classList.add("transparent");
+            }
+        }
+        if (isScrollingDown) {
+            if (mainNav) {
+                mainNav.classList.add("white");
+                mainNav.classList.remove("transparent");
+            }
+            if (breadcrumb) {
+                breadcrumb.classList.add("white");
+                breadcrumb.classList.remove("transparent");
+            }
+        }
+    }
+
+    const onScrollDown = () => {
+        if (menuIsWhite) {
+            header.style.position = 'fixed';
+            mainContent.style.paddingTop = header.offsetHeight + 'px';
+        }
+
+
+        if (!firstScrollDownPosition) {
+            firstScrollDownPosition = currentScrollPosition;
+        }
+
+        if (currentScrollPosition < firstScrollDownPosition + 120) {
+            return;
+        }
+
+        /**
+         * Prevent from the header and footer shaking when scrolling too fast
+         * to the bottom
+         */
+        if (document.body.clientHeight - (window.scrollY + window.innerHeight) < navigation.clientHeight) {
+            return;
+        }
+
+        if (navigation && mainContent) {
+            $('header.header').addClass('scrolled-down');
+            navigation.classList.add("scrolled-down");
+            let scrollingMenuElements = navigation.querySelector('.navigation__scrolled_animate_menus');
+            if (!scrollingMenuElements) return;
+
+            let goesUpTo = breadcrumb ? (scrollingMenuElements.offsetHeight - breadcrumb.offsetHeight) : scrollingMenuElements.offsetHeight;
+            scrollingMenuElements.style.top = '-' + goesUpTo + 'px';
+        }
+    }
+
+    const onScrollUp = () => {
+        firstScrollDownPosition = null;
+
+        if (navigation && mainContent) {
+          if (menuIsWhite) {
+            header.style.position = 'fixed';
+            mainContent.style.paddingTop = header.offsetHeight + 'px';
+          }
+
+            $('header.header').removeClass('scrolled-down');
+            navigation.classList.remove("scrolled-down");
+            //if (mainContent) mainContent.classList.remove("scrolled-down");
+            let scrollingMenuElements = navigation.querySelector('.navigation__scrolled_animate_menus');
+            if (!scrollingMenuElements) return;
+            scrollingMenuElements.style.top = '0';
+        }
+    }
+
+    const controlMenuTooLarge = () => {
+
+        let logoRight = mainNav.querySelector('.logo').getBoundingClientRect().right;
+        let menuLeft = menu.getBoundingClientRect().left;
+
+        if (!mainNavWidth && menuLeft - logoRight <= 0) {
+            document.body.classList.add('force-mobile-mode');
+            mainNavWidth = navigation.clientWidth;
+        }
+
+        if (mainNavWidth && navigation.clientWidth > mainNavWidth) {
+            document.body.classList.remove('force-mobile-mode');
+            mainNavWidth = null;
+        }
+    }
+
+    const controlBreadcrumbTooLarge = () => {
+        if (!breadcrumb) return;
+
+        let lastItem = $(breadcrumb).find('ol').children('li').last();
+        if (($(lastItem).offset().left + $(lastItem).outerWidth()) >= $(window).width() - 50) {
+
+            $(breadcrumb).addClass('breadcrumb-collapsed');
+            const breadcrumbCollapsed = $('.breadcrumb li:not(:first-child):not(:last-child)');
+            breadcrumbCollapsed.hide();
+            const li = document.createElement("li");
+            li.classList.add("breadcrumb-ellipsis");
+
+            const button = document.createElement("button");
+
+            const spanAriaHidden = document.createElement("span");
+            spanAriaHidden.setAttribute('aria-hidden', 'true');
+            spanAriaHidden.textContent = "...";
+
+            const spanSR = document.createElement("span");
+            spanSR.classList.add('visually-hidden');
+            spanSR.textContent = Drupal.t("Show all breadcrumb elements", {}, {'context': 'Accessibility'});
+
+            button.appendChild(spanAriaHidden);
+            button.appendChild(spanSR);
+
+            li.appendChild(button);
+
+            breadcrumbCollapsed.last().before(li);
+
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                breadcrumbCollapsed.show();
+                li.remove();
+            });
+        }
+    }
+
+    const initMobileMenu = () => {
+        let burgerButtonClose = mainNav.querySelector('.burger-button-close'),
+            burgerButtonOpen = mainNav.querySelector('.burger-button-open');
+
+        $(burgerButtonClose).hide();
+
+        burgerButton.addEventListener('click', (event) => {
+            if (menu) {
+                let menuActive = menu.classList.toggle('mobile-active');
+
+                if (menuActive) {
+
+                    $(burgerButtonClose).hide();
+                    $(burgerButtonOpen).show();
+                    $(burgerButtonOpen).focus();
+
+                    $(menu).scrollTop(0);
+
+                    let breadcrumbHeight = breadcrumb ? breadcrumb.offsetHeight : 0;
+                    let navigationBottom = navigation ? navigation.getBoundingClientRect().bottom : 0;
+                    let menuHeight = window.innerHeight - (navigationBottom - breadcrumbHeight); // calc height of whole header less the breadcrumb
+                    menu.style.height = menuHeight + "px";
+                    document.body.style.overflow = 'hidden';
+                    mainNav.classList.add('menu-mobile-active');
+                    document.querySelector('header.header[role="banner"]').style.zIndex = '7';
+
+                    if (!menuIsWhite) {
+                        mainNav.classList.remove('transparent');
+                        mainNav.classList.add('white');
+                    }
+
+                    // IOS detection
+                    const iOS = () => {
+                        return [
+                            'iPad Simulator',
+                            'iPhone Simulator',
+                            'iPod Simulator',
+                            'iPad',
+                            'iPhone',
+                            'iPod'
+                        ].includes(navigator.platform)
+                            // iPad on iOS 13 detection
+                            || (navigator.userAgent.includes("Mac") && "ontouchend" in document)
+                    }
+
+                    if (iOS()) {
+                        //menu navigation open mobile for IOS devices
+                        $(".main-menu-item > a, .main-menu-item > span").on("click touchstart", function (e) {
+                            if ($(this).parent().has(".submenu").length) {
+                                e.preventDefault()
+                                $(this).next(".submenu").addClass('show');
+                                $(this).parents('.navigation__main-nav__menu').first().scrollTop(0);
+                                $(this).parents('.navigation__main-nav__menu').first().css('overflow-y', 'hidden');
+                            }
+                            // if (".submenu show"){
+                            //     $(".top-menu-mobile").css("display", "none");
+                            // }
+                        })
+                    } else {
+                        //menu navigation open mobile for all devices
+                        $(".main-menu-item > a, .main-menu-item > span").on("click", function (e) {
+                            if ($(this).parent().has(".submenu").length) {
+                                e.preventDefault()
+                                $(this).next(".submenu").addClass('show');
+                                $(this).parents('.navigation__main-nav__menu').first().scrollTop(0);
+                                $(this).parents('.navigation__main-nav__menu').first().css('overflow-y', 'hidden');
+                            }
+                            // if (".submenu show"){
+                            //     $(".top-menu-mobile").css("display", "none");
+                            // }
+                        })
+                    }
+
+                    $(".back-button").on("click", function (e) {
+                        e.preventDefault()
+                        $(this).parent().removeClass("show");
+                        $(this).parents('.navigation__main-nav__menu').first().css('overflow-y', 'auto');
+                        $(".top-menu-mobile").css("display", "flex");
+                    })
+
+                    $(".submenu-item > a, .submenu-item > span").on("click", function (e) {
+                        if ($(this).parent().has(".submenu-item-container").length) {
+                            e.preventDefault();
+                            $(this).parents('ul.submenu').first().scrollTop(0);
+                            $(this).parents('ul.submenu').first().css('overflow-y', 'hidden');
+                            $(this).next(".submenu-item-container").addClass('show');
+                        }
+                        // if (".submenu-item-container show"){
+                        //     $(".top-menu-mobile").css("display", "none");
+                        // }
+                    });
+
+                    $(".back-button2").on("click", function (e) {
+                        e.preventDefault();
+                        $(this).parents('ul.submenu').first().css('overflow-y', 'auto');
+                        $(this).parent().removeClass("show");
+                    })
+
+                } else {
+                    $(burgerButtonOpen).hide();
+                    $(burgerButtonClose).show();
+                    $(burgerButtonClose).focus();
+
+                    menu.style.removeProperty('height');
+                    document.body.style.removeProperty('overflow');
+                    mainNav.classList.remove('menu-mobile-active');
+                    document.querySelector('header.header[role="banner"]').style.removeProperty('z-index');
+
+                    if (!menuIsWhite && window.scrollY <= 0) {
+                        mainNav.classList.add('transparent');
+                        mainNav.classList.remove('white');
+                    }
+
+                    //menu navigation open mobile closed
+                    $(".main-menu-item > a, .main-menu-item > span").off("click");
+                    $(".back-button").off("click");
+                    $(".submenu-item > a, .submenu-item > span").off("click");
+                    $(".back-button2").off("click");
+                }
+            }
+        });
+
+    }
+
+    const handleAriaExpanded = () => {
+        $(mainNav).find('[aria-expanded]').each((key, elem) => {
+            Drupal.theme.handleAriaExpanded(elem);
+        });
+    }
+
+    const handleKeyPress = () => {
+        $(document).on('keydown', (e) => {
+            if (e.keyCode === ESC) {
+                if ($(menu).hasClass('mobile-active')) {
+                    burgerButton.click();
+                }
+            }
+
+        });
+    }
+
+    if (menuIsWhite) {
+        initWhiteContentAfterTheme();
+    } else {
+        initDefaultTheme();
+    }
+
+    controlBreadcrumbTooLarge();
+    controlMenuTooLarge();
+    refreshMainPadding();
+    handleAriaExpanded();
+    handleWindowResize();
+    handleKeyPress();
+
+    window.addEventListener('scroll', (event) => {
+        currentScrollPosition = window.scrollY;
+        isScrollingDown = currentScrollPosition > lastScrollPosition;
+        if (isScrollingDown) {
+            onScrollDown();
+        } else {
+            onScrollUp();
+        }
+        lastScrollPosition = currentScrollPosition <= 0 ? 0 : currentScrollPosition; // For Mobile or negative scrolling
+
+        if (!menuIsWhite) playDefaultTheme();
+    });
+
+    if (burgerButton) {
+        initMobileMenu();
+    }
+
+    const verticalAlignMenuSubLinks = (submenu) => {
+        const links = $(submenu).find('.menu-item-level-2 > a.submenu-item-link, .menu-item-level-2 > span.submenu-item-link');
+
+        if (window.matchMedia("(min-width: 1024px)").matches) {
+            const tallerHeight = Math.max(...$.map(links, (link, key) => {
+                return link.offsetHeight;
+            }));
+
+            links.each((key, link) => {
+                if (tallerHeight > 0) {
+                    link.style.height = tallerHeight + 'px';
+                }
+            })
+        } else {
+            links.each((key, link) => {
+                link.style.removeProperty('height');
+            })
+        }
+    }
+
+    const subMenuSelector = "header.header .navigation .navigation__main-nav .submenu";
+
+    Drupal.behaviors.GeodisAlignMenuSublinks = {
+        attach: function(context) {
+            once('GeodisAlignMenuSublinks', subMenuSelector, context).forEach((submenu) => {
+                verticalAlignMenuSubLinks(submenu);
+            });
+        }
+    }
+
+    let timeoutId;
+    let previousWidth = window.innerWidth;
+    function debounce(func, delay) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(func, delay);
+    }
+
+    function onResize() {
+        const currentWidth = window.innerWidth;
+
+        if (currentWidth !== previousWidth) {
+            document.querySelectorAll(subMenuSelector).forEach(submenu => {
+                verticalAlignMenuSubLinks(submenu);
+            });
+        }
+    }
+
+    window.addEventListener('resize', () => debounce(onResize, 250))
+
+    // Make refreshMainPadding a global function
+    Drupal.behaviors.refreshMainPadding = {
+        attach: function (context) {
+            Drupal.theme.refreshMainPadding = function () {
+                refreshMainPadding();
+            }
+        }
+    }
+
+    function loadCountryLanguagesBlock(selector) {
+        let languagesFormBlock = $(selector).find('.choice_language_form');
+
+        if (selector === '.language-selector-mobile' ) {
+            let languageSelector = $(selector).find('.choice_language_form__language-selector');
+            $(once('countryLanguagesBlock', languageSelector)).click((e) => {
+                let languageSelectorMain = $(selector).find('.choice_language_form__main');
+
+                if (!$(e.currentTarget).hasClass('show')) {
+                    $(e.currentTarget).addClass('show');
+                    languageSelectorMain.stop(true, true).slideDown(250, function () {
+                        // Adjust scroll after slideDown completes
+                        let mobileMenu = $(selector).parents('div.navigation__main-nav__menu');
+                        if (mobileMenu.length !== 0) {
+                            let offsetTop = languageSelectorMain.offset().top - mobileMenu.offset().top + mobileMenu.scrollTop();
+
+                            let elementHeight = languageSelectorMain.outerHeight();
+                            let menuHeight = mobileMenu.height();
+
+                            let scrollTop = offsetTop + elementHeight - menuHeight;
+
+                            mobileMenu.animate({
+                                scrollTop: scrollTop > 0 ? scrollTop : 0
+                            }, 250);
+                        }
+                    });
+
+                } else {
+                    $(e.currentTarget).removeClass('show');
+                    languageSelectorMain.stop(true, true).slideUp(250);
+                }
+
+            });
+        }
+    }
+
+    Drupal.behaviors.countryLanguagesBlock = {
+        attach: function (context) {
+            if (burgerButton) {
+                $(once('countryLanguagesBlock', burgerButton)).click((e) => {
+                    if (menu.classList.contains('mobile-active')) {
+                        loadCountryLanguagesBlock('.language-selector-mobile');
+                    }
+                });
+            }
+
+        }
+    }
+
+})(jQuery, Drupal, once)

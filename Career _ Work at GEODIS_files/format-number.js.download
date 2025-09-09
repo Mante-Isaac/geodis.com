@@ -1,0 +1,25 @@
+(function($, Drupal) {
+    'use strict';
+
+    function formatNumber(number, interval) {
+        const regex = new RegExp(`\\B(?=([\\dA-Za-z]{${interval}})+(?!\\w))`, 'g');
+
+        const numberToFormatAsString = number.toString();
+        return numberToFormatAsString.replace(regex, ' ');
+    }
+
+    Drupal.formatNumber = (number, interval) => {
+        return formatNumber(number, interval)
+    }
+
+    $(document).ready(() => {
+        const formatNumbersElements = $('.format-number');
+
+        [...formatNumbersElements].forEach((element) => {
+            if (element.getAttribute('animating')) return;
+
+            const formatedNumber = formatNumber(element.innerText, 3);
+            element.innerText = formatedNumber;
+        });
+    });
+})(jQuery, Drupal);

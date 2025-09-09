@@ -1,0 +1,23 @@
+(function ($, Drupal, once, drupalSettings) {
+    const languagesFormBlockSelector = '.choice_language_form';
+
+    const handleFooterOpening = () => {
+
+        $(once('footer-opening', '.name-domain')).click((e) => {
+            let dropdownCountrySelectorDiv = $(e.currentTarget).parent('.dropdown-country-selector');
+            let languagesFormBlock = dropdownCountrySelectorDiv.find('.choice_language_form');
+
+            languagesFormBlock = dropdownCountrySelectorDiv.find(languagesFormBlockSelector);
+            if (languagesFormBlock.is(':visible')) {
+                $(e.currentTarget).removeClass('show');
+                languagesFormBlock.slideToggle();
+            } else {
+                $(e.currentTarget).addClass('show');
+                languagesFormBlock.slideToggle();
+            }
+        });
+    }
+
+    handleFooterOpening();
+
+})(jQuery, Drupal, once, drupalSettings);

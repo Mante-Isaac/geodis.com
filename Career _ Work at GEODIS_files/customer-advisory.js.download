@@ -1,0 +1,179 @@
+(function(Drupal, once) {
+
+    let allFlashMessages = [];
+
+    const initBlock = (customerAdvisoryBlock) => {
+
+        if (checkForClosedBlock(customerAdvisoryBlock)) {
+            return;
+        }
+
+        // Place the first message in the center of the block at started
+        // And move other messages consequently
+        customerAdvisoryBlock
+            .querySelector('.customer-advisory_messages')
+            .style
+            .top = (customerAdvisoryBlock.clientHeight / 2) - (customerAdvisoryBlock.querySelector('.paragraph--type--flash-message').clientHeight / 2) + "px";
+
+        allFlashMessages.push(initFlashMessages(customerAdvisoryBlock));
+        initCloseButton(customerAdvisoryBlock);
+    }
+
+    const checkForClosedBlock = (customerAdvisoryBlock) => {
+        let id = customerAdvisoryBlock.id;
+        if (sessionStorage.getItem('closed_' + id) === 'true') {
+            customerAdvisoryBlock.remove();
+            Drupal.theme.refreshMainPadding();
+            Drupal.theme.resizeHeightAboveTheFold();
+            return true;
+        }
+        return false;
+    }
+
+    const initCloseButton = (customerAdvisoryBlock) => {
+        let closeButton = customerAdvisoryBlock.querySelector('.customer-advisory_close-button');
+        if (!closeButton) return;
+
+        closeButton.onclick = (e) => {
+            closeButton.animate([
+                { transform: 'translateY(-50%) rotate(0deg)' },
+                { transform: 'translateY(-50%) rotate(360deg)' },
+            ], { duration: 1000, iterations: 1});
+
+            let removeAnimation = customerAdvisoryBlock.animate([
+                { transform: 'translateY(0)', opacity: '1' },
+                { transform: 'translateY(-100%)', opacity: '0' },
+            ], { duration: 300, iterations: 1 });
+
+            removeAnimation.onfinish = (e) => {
+                customerAdvisoryBlock.remove();
+                Drupal.theme.refreshMainPadding();
+                Drupal.theme.resizeHeightAboveTheFold();
+                sessionStorage.setItem('closed_' + customerAdvisoryBlock.id, 'true');
+            }
+        }
+    }
+
+    const initFlashMessages = (customerAdvisoryBlock) => {
+        // If the visible flash is higher than the point where the gradient start
+        let gradientStart = window.innerWidth - (customerAdvisoryBlock.querySelector('.customer-advisory_right-gradient').clientWidth * (1 - 25/100));
+        let flashMessages = [];
+
+        customerAdvisoryBlock.querySelectorAll('.paragraph--type--flash-message').forEach((flashMessage, key) => {
+            flashMessage.style.left = '0px';
+            if (key > 0) flashMessage.style.visibility = 'hidden';
+            flashMessages.push({
+                blockId: customerAdvisoryBlock.id,
+                element: flashMessage,
+                position: key,
+                isVisible: key === 0,
+                isOvertaking: flashMessage.querySelector('.flash-message').getBoundingClientRect().right > gradientStart,
+                leftStartPosition: flashMessage.offsetLeft,
+                rightEndPosition: gradientStart,
+                isPaused: false,
+                //'hasMirror': false,
+            });
+        });
+
+        return flashMessages;
+    }
+
+    const nextMessage = (flashMessages) => {
+        let message = flashMessages.find(message => message.isVisible);
+        let nextMessage = flashMessages.find(nextMessage => nextMessage.position === 1);
+
+        let animationOut =  [
+            { opacity: '1', transform: 'translateY(0)', visibility: 'visible' },
+            { opacity: '0', transform: 'translateY(-25%)', visibility: 'hidden' }
+        ];
+
+        let animationIn = [
+            { opacity: '0', transform: 'translateY(-75%)', visibility: 'hidden' },
+            { opacity: '1', transform: 'translateY(-100%)', visibility: 'visible' }
+        ];
+
+        let animationTiming = {
+            duration: 750,
+            iterations: 1,
+        }
+
+        nextMessage.element.animate(animationIn, animationTiming).onfinish = (e) => {
+            nextMessage.element.style.visibility = 'visible';
+        };
+
+        message.element.animate(animationOut, animationTiming).onfinish = (e) => {
+            // Use parentNode because the paragraph is contains in a simple div
+            let newPositionedElement = message.element.parentNode.cloneNode(true);
+            let blockId = message.blockId;
+            let block = document.getElementById(blockId);
+
+            if (block) {
+                newPositionedElement.style.visibility = 'hidden';
+                block.querySelector('.customer-advisory_messages div').append(newPositionedElement);
+                message.element.parentNode.remove();
+                flashMessages = initFlashMessages(block);
+
+                window.requestAnimationFrame(() => {
+                    playFlashMessages(flashMessages);
+                });
+            }
+        };
+    }
+
+    const playFlashMessages = (flashMessages) => {
+        let message = flashMessages.find(message => message.isVisible);
+
+        if (message.isPaused) return;
+
+        if (message.isOvertaking) {
+            if (message.leftStartPosition === message.element.offsetLeft) {
+                message.isPaused = true;
+                setTimeout(() => {
+                    message.element.style.left = "-2px";
+                    message.isPaused = false;
+                    window.requestAnimationFrame(() => {
+                        playFlashMessages(flashMessages);
+                    });
+                }, 2000);
+            }
+            else if (message.element.getBoundingClientRect().right > message.rightEndPosition) {
+                message.element.style.left = message.element.offsetLeft - 1 + "px";
+                window.requestAnimationFrame(() => {
+                    playFlashMessages(flashMessages);
+                });
+            }
+            else if (message.element.getBoundingClientRect().right <= message.rightEndPosition) {
+                message.isPaused = true;
+                setTimeout(() => {
+                    nextMessage(flashMessages);
+                }, 2000);
+            }
+            /*if (!message.hasMirror) {
+                let content = message.element.querySelector('.flash-message').cloneNode(true);
+                message.element.append(content);
+                message.hasMirror = true;
+            }*/
+        } else {
+            message.isPaused = true;
+            setTimeout(() => {
+                nextMessage(flashMessages);
+            }, 5000);
+        }
+    }
+
+    Drupal.behaviors.processCustomerAdvisory = {
+        attach: function(context) {
+
+            once('processCustomerAdvisory', '.block-content__customer-advisory', context).forEach(customerAdvisoryBlock => {
+                initBlock(customerAdvisoryBlock);
+            });
+
+            for (let flashMessages of allFlashMessages) {
+                window.requestAnimationFrame(() => {
+                    playFlashMessages(flashMessages);
+                })
+            }
+        }
+    }
+
+})(Drupal, once)

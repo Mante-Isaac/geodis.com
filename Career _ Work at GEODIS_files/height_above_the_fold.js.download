@@ -1,0 +1,105 @@
+(function($, Drupal, once) {
+    'use strict';
+    /**
+     * This behavior make
+     * each class in the DOM named "geodis-ss-height-above-the-fold"
+     * to have automatically a calculated height
+     * according to the available height between the opened header and the bottom of the screen
+     * (above the fold).
+     *
+     * By default, it takes only the blue top bar + the customer advisory messages.
+     * Use the additional class "under-the-main-nav" to resize from under the main navigation and the breadcrumb if needed.
+     * (e.g "geodis-ss-height-above-the-fold under-the-main-nav")
+     *
+     * Main usage components : Hero Banners
+     */
+
+    const mainClass = '.geodis-ss-height-above-the-fold';
+    const additionalClass = '.under-the-main-nav';
+
+    const getHeightAboveTheFold = (component) => {
+        // Admin toolbar height
+        const blackToolbar = $('.toolbar-bar').outerHeight();
+        // Grey admin toolbar height
+        const horizontalToolbar = $('body.toolbar-fixed.toolbar-tray-open.toolbar-horizontal #toolbar-item-administration-tray').outerHeight();
+        // Blue top bar height
+        const headerTopBar = $('#header-top-bar').outerHeight();
+        // Customer advisory messages height
+        const customerAdvisory = $('#header-customer-advisory').outerHeight();
+        // Detect any bottom sticky menu on mobile
+        const stickyMenuMobileClasses = [
+            '.sticky_mobile_menu',
+            '.mobile_article_aside'
+        ].join();
+        const stickyMenuMobile = $(stickyMenuMobileClasses).first().is(':visible') ? $(stickyMenuMobileClasses).first().outerHeight() : 0;
+
+        let total = (blackToolbar || 0) + (horizontalToolbar || 0) + (headerTopBar || 0) + (customerAdvisory || 0) + (stickyMenuMobile || 0);
+
+        // If it has the additionnal class to calc after the main menu
+        if (component.classList.contains(additionalClass)) {
+            // Main navigation height
+            const headerMainNav = $('#header-main-nav').outerHeight();
+            // Breadcrumb height
+            const breadcrumb = $('#system-breadcrumb').outerHeight();
+
+            total += (headerMainNav || 0) + (breadcrumb || 0);
+        }
+
+        return total ? window.innerHeight - total : window.innerHeight;
+    }
+
+    const resizeComponent = (component) => {
+        component.style.height = getHeightAboveTheFold(component) + 'px';
+    }
+
+  const isTouchDevice = () => (('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0));
+
+    Drupal.behaviors.GeodisSSHeightAboveTheFold = {
+        attach: function(context) {
+            once('GeodisSSHeightAboveTheFold', mainClass, context).forEach((component) => {
+                resizeComponent(component);
+            });
+        }
+    }
+
+    /*
+    $(document).ready(function() {
+        document.querySelectorAll(mainClass).forEach((component) => {
+            resizeComponent(component);
+        });
+    });
+    */
+
+  // Don't trigger the resize function with touch devices since a single scroll could "resize"
+
+  if (!isTouchDevice()) {
+    window.addEventListener('resize', function() {
+      document.querySelectorAll(mainClass).forEach((component) => {
+        resizeComponent(component);
+      });
+    });
+  }
+
+  Drupal.behaviors.resizeHeightAboveTheFold = {
+    attach: function (context) {
+      Drupal.theme.resizeHeightAboveTheFold = function () {
+        document.querySelectorAll(mainClass).forEach((component) => {
+          resizeComponent(component);
+        });
+      }
+    }
+  }
+
+  $(document).ready(() =>  {
+    document.querySelectorAll(mainClass).forEach((component) => {
+      resizeComponent(component);
+    });
+  });
+
+  $(window).on('load', () => {
+    document.querySelectorAll(mainClass).forEach((component) => {
+      resizeComponent(component);
+    });
+  });
+
+})(jQuery, Drupal, once);
